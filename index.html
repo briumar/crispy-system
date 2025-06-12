@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weather Wardrobe</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <style>
+    :root.dark {
+      --bg: #1f2937;
+      --card: #374151;
+      --text: #e5e7eb;
+    }
+    body { background-color: var(--bg, #f3f4f6); color: var(--text, #111827); }  
+    .card { background-color: var(--card, #fff); }
+    .theme-toggle-btn {
+      @apply px-3 py-1 rounded bg-gray-800 text-white shadow hover:bg-gray-700;
+    }
+  </style>
+</head>
+<body class="font-sans transition-colors duration-300">
+  <div class="container mx-auto p-6">
+    <div class="flex justify-between items-center mb-4">
+      <h1 class="text-3xl font-bold">Weather Wardrobe</h1>
+      <div class="flex items-center gap-3">
+        <button id="themeBtn" class="px-4 py-2 rounded bg-gray-800 text-white hover:bg-gray-700">Dark</button>
+        <div id="userStatus"></div>
+      </div>
+    </div>
+    <div id="loginModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden"><!--login-->
+      <div class="card p-6 rounded shadow w-80">
+        <h2 class="text-xl font-bold mb-4">Log In</h2>
+        <input id="loginUsername" type="text" placeholder="Username" class="w-full p-2 border mb-2 rounded">
+        <input id="loginPassword" type="password" placeholder="Password" class="w-full p-2 border mb-4 rounded">
+        <div class="flex justify-end gap-2">
+          <button onclick="closeModal('loginModal')" class="px-3 py-1 border rounded">Cancel</button>
+          <button onclick="loginUser()" class="bg-indigo-600 text-white px-4 py-1 rounded">Log In</button>
+        </div>
+      </div>
+    </div>
+    <div id="registerModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden"><!--register-->
+      <div class="card p-6 rounded shadow w-80">
+        <h2 class="text-xl font-bold mb-4">Register</h2>
+        <input id="registerUsername" type="text" placeholder="Username" class="w-full p-2 border mb-2 rounded">
+        <input id="registerPassword" type="password" placeholder="Password" class="w-full p-2 border mb-2 rounded">
+        <div class="flex justify-end gap-2">
+          <button onclick="closeModal('registerModal')" class="px-3 py-1 border rounded">Cancel</button>
+          <button onclick="registerUser()" class="bg-green-600 text-white px-4 py-1 rounded">Register</button>
+        </div>
+      </div>
+    </div>
+    <div class="flex flex-col items-center"><!--input city-->
+      <input id="cityInput" type="text" placeholder="Enter city e.g., Adelaide" class="p-2 border rounded mb-4 w-72">
+      <button onclick="getWeatherAndOutfit()" class="bg-blue-600 text-white px-4 py-2 rounded">Get Weather & Suggestion</button>
+    </div>
+    <div id="weatherOutput" class="mt-6 text-center text-lg"></div>
+    <div id="weatherIcon" class="mt-2 text-center"></div>
+    <hr class="my-8">
+    <h2 class="text-2xl font-semibold text-center mb-4">🔍 Enter clothing keyword (optional)</h2>
+    <div class="flex flex-col items-center">
+      <input id="searchInput" type="text" placeholder="e.g., long coat, hoodie" class="p-2 border rounded mb-4 w-72">
+      <button onclick="searchPexelsImages(true)" class="bg-green-600 text-white px-4 py-2 rounded">Search Outfit Images</button>
+    </div>
+    <div id="imageOutput" class="mt-4 flex justify-center flex-wrap gap-4"></div>
+    <hr class="my-8">
+    <h2 class="text-xl font-semibold text-center mb-4">📜 Search History</h2>
+    <ul id="historyList" class="text-center mb-6 text-gray-600"></ul>
+  </div>
+<script>
+const weatherApiKey='39253e8520b381571362fd69643fe1bf';
+const pexelsApiKey='tWyISYzE0Yo6HfKKGdedpC8H5XqedHUW8JAV9qcyu37eUwOvZWLvt9rm';
+let latestKeyword='';
+const themeBtn=document.getElementById('themeBtn');
+function applyTheme(theme){
+  document.documentElement.classList.toggle('dark', theme==='dark');
+  document.documentElement.classList.toggle('light', theme==='light');
+  themeBtn.textContent = theme==='dark' ? 'Light' : 'Dark';
+  localStorage.setItem('theme', theme);
+}
+const theme_Saved=localStorage.getItem('theme')||'light';
+applyTheme(theme_Saved);
+themeBtn.onclick=()=> applyTheme(document.documentElement.classList.contains('dark')?'light':'dark');
+
+function openLoginModal(){document.getElementById('loginModal').classList.remove('hidden');}//login&register
+function openRegisterModal(){document.getElementById('registerModal').classList.remove('hidden');}
+function closeModal(id){document.getElementById(id).classList.add('hidden');}
+function getUsers(){return JSON.parse(localStorage.getItem('users')||'{}');}
+function saveUsers(u){localStorage.setItem('users',JSON.stringify(u));}
+function registerUser(){const u=document.getElementById('registerUsername').value.trim();const p=document.getElementById('registerPassword').value.trim();const users=getUsers();if(users[u]){alert('Username exists');}else if(!u||!p){alert('Enter valid credentials');}else{users[u]=p;saveUsers(users);alert('Registered!');closeModal('registerModal');}}
+function loginUser(){const u=document.getElementById('loginUsername').value.trim();const p=document.getElementById('loginPassword').value.trim();const users=getUsers();if(users[u]&&users[u]===p){localStorage.setItem('username',u);closeModal('loginModal');updateUserStatus();}else alert('Invalid username or password');}
+function updateUserStatus(){const s=document.getElementById('userStatus');const u=localStorage.getItem('username');s.innerHTML=u?`<span class='mr-2'>Welcome, <b>${u}</b></span><button onclick='logoutUser()' class='bg-red-500 text-white px-3 py-1 rounded'>Log Out</button>`:`<button onclick='openLoginModal()' class='bg-indigo-600 text-white px-4 py-2 rounded'>Log In</button><button onclick='openRegisterModal()' class='bg-green-600 text-white px-4 py-2 rounded ml-2'>Register</button>`;}
+function logoutUser(){localStorage.removeItem('username');updateUserStatus();}
+window.onload=()=>{updateUserStatus();applyTheme(theme_Saved);};//刷新后保存
+
+async function getWeatherAndOutfit(){const city=document.getElementById('cityInput').value;const out=document.getElementById('weatherOutput');const iconDiv=document.getElementById('weatherIcon');const imgOut=document.getElementById('imageOutput');const keyInput=document.getElementById('searchInput').value.trim();out.textContent='Fetching weather...';imgOut.innerHTML='';iconDiv.innerHTML='';try{const res=await axios.get(`https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${weatherApiKey}&units=metric`);const d=res.data;const temp=d.main.temp;const desc=d.weather[0].description;const icon=d.weather[0].icon;out.innerHTML=`City: <b>${city}</b><br>Temperature: ${temp}℃<br>Condition: ${desc}`;iconDiv.innerHTML=`<div class='bg-yellow-100 inline-block p-4 rounded-lg shadow border border-yellow-400'><img src='https://openweathermap.org/img/wn/${icon}@2x.png' alt='icon'></div>`;if(!keyInput){latestKeyword=temp>=30?'summer outfit':temp>=20?'spring fashion':temp>=10?'jacket outfit':'winter coat outfit';addToHistory(`Auto keyword (${city}): ${latestKeyword}`);}else{latestKeyword=keyInput;addToHistory(`User keyword (${city}): ${latestKeyword}`);}searchPexelsImages();}catch(e){out.textContent='City not found or network error';console.error(e);}}
+async function searchPexelsImages(force=false){const inp=document.getElementById('searchInput').value.trim();if(force&&inp){latestKeyword=inp;addToHistory(`User keyword search: ${latestKeyword}`);}const imgOut=document.getElementById('imageOutput');if(!latestKeyword){imgOut.textContent='Enter keyword or get weather first.';return;}imgOut.textContent='Searching...';try{const page=Math.floor(Math.random()*10)+1;const res=await axios.get(`https://api.pexels.com/v1/search?query=${encodeURIComponent(latestKeyword)}&per_page=6&page=${page}`,{headers:{Authorization:px26 = pexelsApiKey}});const photos=res.data.photos;if(!photos.length){imgOut.textContent='No images found.';return;}imgOut.innerHTML='';photos.forEach(p=>{const wrap=document.createElement('div');wrap.className='flex flex-col items-center';const img=document.createElement('img');img.src=p.src.medium;img.className='rounded shadow w-72';const btn=document.createElement('button');btn.textContent='📤 Share';btn.className='mt-2 text-sm text-blue-500 underline';btn.onclick=()=>navigator.clipboard.writeText(p.url).then(()=>alert('Image link copied!'));wrap.appendChild(img);wrap.appendChild(btn);imgOut.appendChild(wrap);});}catch(e){imgOut.textContent='Error fetching images.';console.error(e);}}
+function addToHistory(text){const list=document.getElementById('historyList');const li=document.createElement('li');li.textContent=text;list.appendChild(li);}
+</script>
+</html>
